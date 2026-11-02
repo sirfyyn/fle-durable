@@ -10,6 +10,8 @@
  *   FLE_DURABLE_MODEL_KEY   API key if the server wants one
  *   FLE_DURABLE_CONTEXT     context window in tokens (default 32768)
  *   FLE_DURABLE_WORKSPACE   the agent's working folder (default <home>/work)
+ *   FLE_DURABLE_HUB_URL     an MCP hub (FYOS fyos-hub): its tools through hub_search / hub_call (src/hub.js)
+ *   FLE_DURABLE_HUB_HEADERS JSON object of headers for the hub (its token, X-GitHub-Token); never shown to the model
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -67,6 +69,7 @@ export function loadConfig(source = configPath(), env = process.env) {
       maxTokens: Math.max(256, Math.min(num(m.maxTokens, Math.floor(window / 4)), Math.floor(window / 2))),
     },
     events: { enabled: file.events?.enabled !== false && env.FLE_DURABLE_EVENTS !== '0' },
+    hub: { url: str(env.FLE_DURABLE_HUB_URL, str(file.hub?.url)), headers: hubHeaders(env.FLE_DURABLE_HUB_HEADERS, file.hub?.headers) },
     ports: file.ports ?? {},
     agenda: { zone: str(file.agenda?.zone, Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'), check_s: num(file.agenda?.check_s, 15) },
     limits: { bodyBytes: num(file.limits?.bodyBytes, 2 * 1024 * 1024), historyEntries: num(file.limits?.historyEntries, 400) },
@@ -93,4 +96,18 @@ export function publicView(cfg) {
     events: cfg.events.enabled,
     zone: cfg.agenda.zone,
   };
+}
+
+/** Headers for the hub: a JSON object of strings (from the environment or the file); anything else is ignored. */
+function hubHeaders(text, fromFile) {
+  let v = fromFile;
+  if (text) {
+    try {
+      v = JSON.parse(text);
+    } catch {
+      v = null;
+    }
+  }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  return Object.fromEntries(Object.entries(v).filter(([k, x]) => typeof x === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(k)));
 }
