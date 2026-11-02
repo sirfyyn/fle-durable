@@ -4,11 +4,14 @@
  */
 import { checkContract } from './contracts.js';
 
-const within = (ms, promise, what) =>
-  Promise.race([
-    Promise.resolve(promise),
-    new Promise((_, fail) => setTimeout(() => fail(new Error(`${what} took longer than ${ms} ms`)), ms).unref?.()),
-  ]);
+/** `promise` within `ms`, else an error. The timer keeps the process alive (a stop that never settles must still be reported). */
+function within(ms, promise, what) {
+  let timer;
+  const limit = new Promise((_, fail) => {
+    timer = setTimeout(() => fail(new Error(`${what} took longer than ${ms} ms`)), ms);
+  });
+  return Promise.race([Promise.resolve(promise), limit]).finally(() => clearTimeout(timer));
+}
 
 /**
  * sources: create, start, stop again within `stopMs`; state() is JSON; whatever was enqueued has id and text.
