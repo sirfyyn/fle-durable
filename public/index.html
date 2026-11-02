@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>FLE Durable</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="icon.svg" alt="" width="22" height="22" /><b>FLE Durable</b><span id="model" class="faint"></span></div>
+    <span id="status" class="pill">connecting …</span>
+  </header>
+  <main class="cols">
+    <section class="chat card">
+      <div id="log" class="log" aria-live="polite"></div>
+      <form id="send" class="composer">
+        <textarea id="text" rows="2" placeholder="Write to your agent. Enter sends, Shift+Enter is a new line."></textarea>
+        <div class="row">
+          <button type="button" id="abort" class="btn">Stop</button>
+          <button type="submit" class="btn primary">Send</button>
+        </div>
+      </form>
+    </section>
+    <aside class="side">
+      <section class="card" id="approvals-card" hidden>
+        <h3>Asks you</h3>
+        <div id="approvals"></div>
+      </section>
+      <section class="card">
+        <h3>Agenda <span id="zone" class="faint"></span></h3>
+        <form id="plan" class="plan">
+          <input id="plan-text" class="input" placeholder="What should happen? E.g. “Summarise what changed today.”" />
+          <div class="row">
+            <select id="plan-kind" class="input">
+              <option value="in">in … minutes</option>
+              <option value="daily">every day at</option>
+              <option value="interval">every … minutes</option>
+            </select>
+            <input id="plan-when" class="input small" value="30" />
+            <button class="btn" type="submit">Plan</button>
+          </div>
+        </form>
+        <div id="agenda"></div>
+      </section>
+      <section class="card">
+        <h3>Waiting</h3>
+        <div id="queue" class="faint">Nothing waits.</div>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

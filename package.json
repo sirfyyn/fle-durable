@@ -1,0 +1,30 @@
+{
+  "name": "fle-durable",
+  "version": "0.1.0",
+  "description": "FLE Durable: an always-on, event-driven local agent on pi-durable. Events in, one durable queue, one agent; survives restarts without running anything twice.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "author": "sirfyyn",
+  "homepage": "https://github.com/sirfyyn/fle-durable#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/sirfyyn/fle-durable.git" },
+  "bugs": { "url": "https://github.com/sirfyyn/fle-durable/issues" },
+  "keywords": ["agent", "local-llm", "durable", "event-driven", "pi", "llama.cpp", "fle"],
+  "engines": { "node": ">=22.19.0" },
+  "bin": { "fle-durable": "src/main.js" },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./ports": "./src/ports/index.js"
+  },
+  "files": ["src", "public", "LICENSE", "NOTICE", "README.md"],
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test \"test/*.test.js\"",
+    "check": "node --test \"test/*.test.js\" && python3 tools/sauber.py ."
+  },
+  "dependencies": {
+    "@earendil-works/chord": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-durable": "1.4.0"
+  }
+}

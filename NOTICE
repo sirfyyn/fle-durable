@@ -1,0 +1,7 @@
+FLE Durable
+Copyright 2026 the FLE Durable authors
+
+Licensed under the Apache License, Version 2.0 (LICENSE).
+
+FLE Durable runs on pi-durable, pi-ai and chord by Earendil Works (https://github.com/earendil-works/pi),
+used as npm dependencies under the MIT License, Copyright (c) 2025 Mario Zechner.
