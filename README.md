@@ -88,7 +88,8 @@ curl -s -X POST -H "Authorization: Bearer $FLE_DURABLE_TOKEN" http://127.0.0.1:8
 - **One durable queue.** An event is first stored (one commit), then handed to the agent as a turn with the event's
   id as request id. A crash in between hands the same event over again, and pi-durable makes the second hand-over a
   no-op. The same id sent twice later is recognised too.
-- **The owner first.** Your own messages have right of way and may steer a running turn; background events wait for it.
+- **The owner first.** Your own messages go before every waiting background event. Each event becomes its own turn after
+  the running one; **Stop** ends a long turn.
 - **Events are data.** Only your messages are instructions. Webhooks, web pages, files and command output reach the
   agent marked as data.
 - **Approvals only where it matters.** Deleting your home folder, `git reset --hard`, formatting a disk and the like are

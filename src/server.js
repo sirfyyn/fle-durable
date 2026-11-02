@@ -9,7 +9,7 @@
  *   GET    /api/health                   model, storage, queue and sources
  *   GET    /api/conversation             the main conversation (entries, oldest first)
  *   GET    /api/stream                   server-sent events of the main conversation (pi-durable events)
- *   POST   /api/message    {text, id?}   the owner writes (right of way)
+ *   POST   /api/message    {text, id?}   the owner writes (goes before background events)
  *   POST   /api/abort                    stop the running turn
  *   GET    /api/agenda · POST /api/agenda · DELETE /api/agenda/<id> · POST /api/agenda/<id>/pause {paused}
  *   POST   /api/events     {text, id?, from?, ref?}   webhook: a background event into the queue

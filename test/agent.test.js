@@ -115,6 +115,26 @@ test('a destructive command is stopped until the owner approves exactly it', asy
   }
 });
 
+test('a turn that fails (model gone) does not swallow the owner message queued behind it', async () => {
+  let up = false;
+  const model = await fakeModel(() => (up ? 'back' : { status: 503 }));
+  const agent = await startAgent(config(model, mkdtempSync(join(tmpdir(), 'fle-durable-'))), { log: { error() {} } });
+  try {
+    await call(agent, 'POST', '/api/events', { id: 'ci-9', text: 'Build 9 failed' });
+    await call(agent, 'POST', '/api/message', { text: 'are you there?' });
+    await until(async () => (await call(agent, 'GET', '/api/queue')).json.entries.length === 0);
+    up = true;
+    const entries = await until(async () => {
+      const h = (await call(agent, 'GET', '/api/conversation')).json.entries;
+      return h.filter((e) => e.kind === 'fle.event').length === 2 ? h : null;
+    }, 20000);
+    assert.deepEqual(entries.filter((e) => e.kind === 'fle.event').map((e) => e.data.source).sort(), ['chat', 'webhook']);
+  } finally {
+    await agent.close();
+    await model.close();
+  }
+});
+
 test('an event accepted before a crash is handed over after the restart, once', async () => {
   const home = mkdtempSync(join(tmpdir(), 'fle-durable-'));
   const model = await fakeModel(() => 'done');

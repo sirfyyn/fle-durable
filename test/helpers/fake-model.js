@@ -16,6 +16,10 @@ export async function fakeModel(reply = () => 'ok') {
     const request = JSON.parse(body || '{}');
     calls.push(request);
     const answer = await reply(request.messages ?? [], request);
+    if (answer && typeof answer === 'object' && answer.status) {
+      res.writeHead(answer.status, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: { message: 'no model loaded' } }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'text/event-stream' });
     const chunk = (delta, finish = null) =>
       res.write(`data: ${JSON.stringify({ id: 'c1', object: 'chat.completion.chunk', created: 1, model: 'fake', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`);

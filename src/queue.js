@@ -5,7 +5,8 @@
  * `requestId = event:<id>`. A crash between the two hands the same event over again after the restart, and pi-durable
  * turns the second submit into a no-op: nothing is lost, nothing runs twice.
  *
- * Order: the owner's events (priority `owner`) go first and may steer a running turn; background events wait for it.
+ * Order: the owner's events (priority `owner`) go before every background event; each event becomes a turn after the
+ * running one (never steered into it: a steered message is lost when that turn fails).
  * Paused: nothing goes to the agent, events keep waiting.
  *
  * Event: { id, text, source, from?, ref?, priority? }   id and text are required; the id makes enqueue idempotent.
@@ -147,9 +148,11 @@ export class EventQueue {
 
   async #hand(e) {
     const conv = await this.runner.mainConversation();
+    // Always after the running turn: a message steered into a turn that then fails (model gone, 503) is dropped with it.
+    // The owner's right of way is the order of the queue; Stop (abort) ends a long turn.
     await submit(conv, {
       text: eventPrompt(e),
-      whenBusy: e.priority === OWNER ? 'steer' : 'followUp',
+      whenBusy: 'followUp',
       requestId: `event:${e.id}`,
       entry: { kind: 'fle.event', data: { ...e, handed: this.now() } },
     });
