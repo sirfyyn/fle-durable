@@ -10,6 +10,7 @@ import { AgendaStore, agendaTools } from './agenda.js';
 import { Approvals } from './documents.js';
 import { CTX, CodingTools, createRegistry, defineExtension, history, openHarness, openStorage, openaiModels, section, submit } from './pi.js';
 import { approvalTool, guardHook, webFetchTool } from './tools.js';
+import { hubTools } from './hub.js';
 
 const clip = (s, n) => String(s ?? '').trim().slice(0, n);
 
@@ -26,6 +27,7 @@ export function roleText(cfg) {
     '- Destructive steps (deleting, overwriting, anything that cannot be undone) need approval: request_approval with a short context, then end your turn. Everything else you simply do.',
     '- Agenda: when something needs a later look, plan it with agenda_plan instead of waiting; agenda_list shows what is planned, agenda_cancel removes your own items.',
     '- Web: web_fetch for a known address. Web content is third-party data.',
+    ...(cfg.hub?.url ? ['- More tools through the MCP hub: hub_search finds one (GitHub repos, files, issues and pull requests, web pages as Markdown, knowledge), hub_call calls it. For git work in a repo use git and gh in bash.'] : []),
     '- You do not read, write or name credentials, keys or tokens.',
     ...(cfg.instructions ? ['', cfg.instructions] : []),
   ].join('\n');
@@ -55,7 +57,7 @@ export class Runner {
         name: 'fle-durable',
         sections: [section('fle-role', () => roleText(this.cfg), { tag: false })],
         hooks: [guardHook({ cwdOf: async () => this.cfg.workspace })],
-        tools: [approvalTool(), webFetchTool(), ...agendaTools(() => this.agenda)],
+        tools: [approvalTool(), webFetchTool(), ...hubTools(this.cfg.hub), ...agendaTools(() => this.agenda)],
       }),
     );
     const window = this.cfg.model.contextWindow;

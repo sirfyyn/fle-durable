@@ -153,6 +153,12 @@ The environment, optionally a JSON file (`FLE_DURABLE_CONFIG` or `--config`):
 | `FLE_DURABLE_HOME` | `~/.fle-durable` | SQLite file and work folder |
 | `FLE_DURABLE_WORKSPACE` | `<home>/work` | the agent's working folder |
 | `FLE_DURABLE_HOST` / `FLE_DURABLE_PORT` | `127.0.0.1` / `8740` | loopback only unless `"allowNetwork": true` |
+| `FLE_DURABLE_HUB_URL` | – | an MCP hub (the FYOS hub): the agent gets `hub_search` and `hub_call` for all its tools |
+| `FLE_DURABLE_HUB_HEADERS` | – | JSON object of headers for the hub (its token, `X-GitHub-Token`); never shown to the model |
+
+**Many tools, a small prompt.** With a hub the agent does not get one description per tool: `hub_search` finds a tool
+by what it should do (GitHub repos, files and pull requests, web pages as Markdown, knowledge, …) and `hub_call` calls it.
+FLE Link sets both variables from its Settings (MCP hub, GitHub sign-in).
 
 The JSON file can also set `agent` (its name), `instructions` (added to its prompt), `agenda.zone`, `ports.sources`.
 
