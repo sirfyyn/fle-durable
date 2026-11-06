@@ -14,7 +14,8 @@ plans its own follow-ups, and asks before anything it cannot undo.
 [Events](#where-events-come-from) ·
 [API](#api) ·
 [FLE Link](https://flelink.run) ·
-[FLE engine](https://github.com/sirfyyn/FastLocalExperts)
+[FLE engine](https://github.com/sirfyyn/FastLocalExperts) ·
+[Rin](https://huggingface.co/sirfyyn/Rin-Deepseek-V4.1-Flash-1017-GGUF)
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node 22.19+](https://img.shields.io/badge/node-22.19%2B-brightgreen.svg)](package.json)
@@ -55,7 +56,7 @@ Engine page, shows the agenda by day, what waits and what asks you, and gives yo
 
 ### With FLE Link
 
-1. Install [FLE Link](https://flelink.run) and start a model on the Engine page.
+1. Install [FLE Link](https://flelink.run) (`curl -fsSL https://flelink.run/install.sh | sh`) and start a model, for example [Rin - Deepseek V4.1 Flash 1017](https://huggingface.co/sirfyyn/Rin-Deepseek-V4.1-Flash-1017-GGUF) with `flelink run rin-deepseek-v41-dspark`, or any model on the Engine page.
 2. Get FLE Durable and its packages once:
 
    ```bash
