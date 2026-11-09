@@ -1,14 +1,15 @@
 /**
- * ports/load.js — fill the ports from the config.
+ * ports/load.js — fill the ports from the config (docs/current/FLE-DURABLE-ANSCHLUESSE.md#grundsatz).
  *
  * Config key `ports.<port>`; for a port with `many`, a list. Each entry is one of:
  *   "builtin"            every builtin variant of the port
  *   "off"                nothing (only as the whole value)
- *   "<name>"             a variant registered by the start file
+ *   "<name>"             a variant the start file registered (builtin or its own, e.g. FYOS's `itsm`)
  *   "./my-source.js"     your module, relative to the config file; absolute paths work too
  *   { "use": <one of the above>, ...options }   the same, with options handed to create() as `ctx.options`
  *
  * A module exports `create(ctx)` (or a default function) and returns an object that passes the port's contract.
+ * Without `ports.<port>` the start file's defaults apply, so an existing setup behaves exactly as before.
  */
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,7 +17,7 @@ import { PORTS, checkContract } from './contracts.js';
 
 const isPath = (s) => s.startsWith('./') || s.startsWith('../') || isAbsolute(s);
 
-/** Turn the config value into a flat list of `{ use, options }`; null when the config says nothing. */
+/** Turn the config value into a flat list of `{ use, options }`. */
 export function portSpecs(value, { many = true } = {}) {
   if (value === undefined || value === null) return null;
   if (value === 'off' || value === false) return [];
@@ -41,15 +42,19 @@ async function importCreate(path, base) {
 }
 
 /**
- * Load the variants of one port, in config order.
- * @param known     { name: { create, builtin } }
+ * Load the variants of one port.
+ * @param port      key in PORTS
+ * @param ctx       handed to every create(); `options` is added per entry
+ * @param known     { name: { create, builtin } } registered by the start file
  * @param defaults  used when the config has no entry for this port
+ * @returns [{ name, variant }] in config order
  */
 export async function loadPort(port, { cfg, ctx = {}, known = {}, defaults = ['builtin'] } = {}) {
   const contract = PORTS[port];
   if (!contract) throw new Error(`unknown port "${port}"`);
   const specs = portSpecs(cfg?.ports?.[port], contract) ?? portSpecs(defaults, contract);
-  const base = cfg?.origin ? dirname(cfg.origin) : process.cwd();
+  const base = cfg?.quelle && isAbsolute(cfg.quelle) ? dirname(cfg.quelle) : process.cwd();
+
   const expanded = [];
   for (const s of specs) {
     if (s.use === 'off') throw new Error(`ports.${port}: "off" only as the whole value`);
@@ -63,12 +68,14 @@ export async function loadPort(port, { cfg, ctx = {}, known = {}, defaults = ['b
       throw new Error(`ports.${port}: unknown variant "${s.use}" (known: ${Object.keys(known).join(', ') || 'none'}; modules start with ./ or /)`);
     }
   }
+
   const seen = new Set();
   const out = [];
   for (const e of expanded) {
-    if (seen.has(e.name)) continue;
+    if (seen.has(e.name)) continue; // "builtin" plus a builtin by name: once
     seen.add(e.name);
-    out.push({ name: e.name, variant: checkContract(port, await e.create({ ...ctx, options: e.options }), e.name) });
+    const variant = await e.create({ ...ctx, options: e.options });
+    out.push({ name: e.name, variant: checkContract(port, variant, e.name) });
   }
   return out;
 }
