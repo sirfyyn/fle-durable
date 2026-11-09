@@ -109,7 +109,7 @@ export class Desktop {
     }
     if (r.status === 423) {
       throw new Gesperrt(
-        String(d?.error || (ziel === 'agent' ? 'Besitzer hat deinen Desktop übernommen.' : 'Computer Use ist gesperrt: nur Besitzer an Hauptserver gibt es frei.')),
+        String(d?.error || (ziel === 'agent' ? 'Besitzer hat deinen Desktop übernommen.' : 'Computer use is locked: only the person at this computer can allow it.')),
         ziel,
       );
     }
@@ -163,7 +163,7 @@ export class Desktop {
     return textErgebnis(
       d.freigabe
         ? `Freigegeben, noch ${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')} Minuten.`
-        : 'Gesperrt: nur ein Mensch an Hauptserver gibt Computer Use frei.',
+        : 'Locked: only the person at this computer can allow computer use.',
       { freigabe: !!d.freigabe, rest_sekunden: rest, ziel },
     );
   }
@@ -182,8 +182,8 @@ export function desktopWerkzeuge({ cfg, desktop = new Desktop(cfg) }) {
     } catch (fehler) {
       if (fehler instanceof Gesperrt) {
         const hinweis = fehler.ziel === 'agent'
-          ? ' Warte, bis Besitzer den Desktop zurückgibt, oder frag ihn.'
-          : ' Frag Besitzer, ob er Computer Use freigibt.';
+          ? ' Wait until the owner gives the desktop back, or ask them.'
+          : ' Ask the owner to allow computer use.';
         return textErgebnis(fehler.message + hinweis, { gesperrt: true, ziel: fehler.ziel });
       }
       throw fehler;

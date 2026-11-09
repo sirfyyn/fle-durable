@@ -24,7 +24,7 @@ export function eventClass(klasse) {
 
 /** The owner's name (lower case) as it appears in chats, tickets and comments. Config `owner`, FYOS sets `max`. */
 export function ownerName(cfg) {
-  return String(cfg?.owner || cfg?.itsm?.besitzer || 'max').trim().toLowerCase();
+  return String(cfg?.owner || cfg?.itsm?.besitzer || 'owner').trim().toLowerCase();
 }
 
 /**
