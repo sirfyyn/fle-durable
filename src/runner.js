@@ -266,7 +266,7 @@ export class Runner {
 
     // Arbeitsbereiche melden: nur Namen und Titel, nie Pfade.
     // Ohne Hub (lokaler Modus) gibt es nichts zu melden.
-    if (this.hub.konfiguriert === false) return this;
+    if (this.hub.konfiguriert === false || this.pd.lokal === true) return this;
     try {
       // `name` ist der Schlüssel (^[a-z0-9_-]{1,40}$, das prüft der Hub), nicht der Titel.
       const bereiche = Object.entries(this.cfg.arbeitsbereiche).map(([name, b]) => ({ name, titel: b.titel }));

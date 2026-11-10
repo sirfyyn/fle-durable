@@ -33,6 +33,20 @@ export function scopeAusTags(tags) {
   return hoechste >= 0 ? SCOPE_GROSS[SCOPE_RANG[hoechste]] : 'READ';
 }
 
+// main.js sets FYOS_HUB_KOEPFE after the imports ran, so it is read when the first Hub is built (at the runner's start)
+let HUB_KOEPFE = null;
+function hubKoepfe() {
+  if (HUB_KOEPFE) return HUB_KOEPFE;
+  try {
+    const roh = JSON.parse(process.env.FYOS_HUB_KOEPFE || '{}');
+    HUB_KOEPFE = Object.fromEntries(Object.entries(roh ?? {}).filter(([, v]) => typeof v === 'string'));
+  } catch {
+    HUB_KOEPFE = {};
+  }
+  delete process.env.FYOS_HUB_KOEPFE;
+  return HUB_KOEPFE;
+}
+
 export class Hub {
   constructor({ url, token = '', agentToken = '', agent = 'persona', timeoutMs = 20000 } = {}) {
     this.url = String(url ?? '').replace(/\/+$/, '');
@@ -41,6 +55,7 @@ export class Hub {
     this.agentToken = agentToken || '';
     this.agent = agent;
     this.timeoutMs = timeoutMs;
+    this.koepfe = hubKoepfe();
     this._scope = new Map();
     this._scopeZeit = new Map();
   }
@@ -50,7 +65,7 @@ export class Hub {
   }
 
   kopf(extra = {}, pfad = '') {
-    const h = { Accept: 'application/json', ...extra };
+    const h = { Accept: 'application/json', ...this.koepfe, ...extra };
     if (this.token) h.Authorization = `Bearer ${this.token}`;
     if (this.agentToken && String(pfad).startsWith('/hub/agent/')) h['X-Agent-Token'] = this.agentToken;
     return h;

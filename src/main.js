@@ -30,6 +30,13 @@ if (process.env.FLE_DURABLE_HOME) {
 }
 if (process.env.FLE_DURABLE_EVENTS === '0') process.env.FYOS_RUNNER_PROAKTIV = '0';
 delete process.env.FLE_DURABLE_EVENTS;
+// the MCP hub from FLE Link's Settings: the runner uses the hub's REST rail on the same host, with the same headers
+if (process.env.FLE_DURABLE_HUB_URL) {
+  process.env.FYOS_HUB_URL = process.env.FLE_DURABLE_HUB_URL.replace(/\/+$/, '').replace(/\/mcp$/, '');
+  if (process.env.FLE_DURABLE_HUB_HEADERS) process.env.FYOS_HUB_KOEPFE = process.env.FLE_DURABLE_HUB_HEADERS;
+}
+delete process.env.FLE_DURABLE_HUB_URL;
+delete process.env.FLE_DURABLE_HUB_HEADERS;
 
 main().catch((e) => {
   console.error(`[fle-durable] start failed: ${e?.stack ?? e}`);

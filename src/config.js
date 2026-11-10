@@ -128,7 +128,7 @@ const LOKAL_VORGABEN = {
 };
 
 const LOKAL_PD_VORGABEN = {
-  device: { id: 'lokal', name: 'Dieser Computer', kind: 'mac' },
+  device: { id: 'lokal', name: 'This computer', kind: 'mac' },
   nodes: [],
   proactive: { enabled: false },
   egress: { enabled: false },

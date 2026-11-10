@@ -49,21 +49,29 @@ ports for event sources of your own.
 | [**FLE Link**](https://flelink.run) | the layer above: installs the engine, picks a model that fits, serves `/v1`, Studio and desktop app |
 | **FLE Durable** | the agent above that: always on, works from events, uses whatever model FLE Link serves |
 
-The easiest way to run FLE Durable is the **Agent** page in FLE Link: it starts FLE Durable with the model of the
-Engine page, shows the agenda by day, what waits and what asks you, and gives your tools a webhook key.
+The easiest way to run FLE Durable is the **Agent** page in FLE Link: it installs FLE Durable, starts it with the model
+of the Engine page, shows the agenda by day, what waits and what asks you, and gives your tools a webhook key.
+
+With FLE Link around it, the agent also has:
+
+- **the chat**: while the agent runs, FLE Link's chat talks to it (a switch goes straight to the model);
+- **tickets, a calendar and a list of events** it keeps with you, on the Agent page;
+- **your calendars**, read only: FLE Link mirrors Google and iCloud calendars you connect in its Settings;
+- **git and gh in your repos**, when you sign in to GitHub in FLE Link;
+- **computer use**: the screen, mouse and keyboard of your computer, off until you allow it on the Agent page for
+  30 minutes;
+- **`flelink code`**: the agent on the project in the current folder, from the terminal.
 
 ## Quick start
 
 ### With FLE Link
 
-1. Install [FLE Link](https://flelink.run) (`curl -fsSL https://flelink.run/install.sh | sh`) and start a model, for example [Rin - Deepseek V4.1 Flash 1017](https://huggingface.co/sirfyyn/Rin-Deepseek-V4.1-Flash-1017-FLE-GGUF) with `flelink run rin-deepseek-v41-dspark`, or any model on the Engine page.
-2. Get FLE Durable and its packages once:
+1. Install [FLE Link](https://flelink.run) (`curl -fsSL https://flelink.run/install.sh | sh`) and load a model, for example [Rin - Deepseek V4.1 Flash 1017](https://huggingface.co/sirfyyn/Rin-Deepseek-V4.1-Flash-1017-FLE-GGUF) (`rin-deepseek-v41-dspark`), or any model on the Engine page.
+2. In FLE Link: **Agent → Install FLE Durable**. It fetches this repository at the commit that FLE Link version was
+   tested with (needs git and Node 22.19 or newer) and starts it. Tick "Start with FLE Link" to keep it on.
+3. Write to it in the chat. From a terminal: `flelink code` in a project folder.
 
-   ```bash
-   git clone https://github.com/sirfyyn/fle-durable && cd fle-durable && npm ci --ignore-scripts
-   ```
-
-3. In FLE Link: **Agent → Set up**, enter the folder, **Start**. Tick "Start with FLE Link" to keep it on.
+To run your own copy instead (a checkout you work on), enter its folder under **Agent → Connection**.
 
 ### On its own
 
@@ -73,7 +81,8 @@ Any OpenAI-compatible server works: `llama-server`, FLE, FLE Link, vLLM, Ollama'
 git clone https://github.com/sirfyyn/fle-durable && cd fle-durable && npm ci --ignore-scripts
 export FLE_DURABLE_TOKEN=$(openssl rand -hex 32)
 export FLE_DURABLE_MODEL_URL=http://127.0.0.1:8080/v1   # your model server
-export FLE_DURABLE_CONTEXT=32768                        # its context window
+echo '{"model": {"contextWindow": 32768, "maxTokens": 8192}}' > config.json   # its context window
+export FLE_DURABLE_CONFIG=$PWD/config.json
 node src/main.js
 ```
 
@@ -150,18 +159,22 @@ The environment, optionally a JSON file (`FLE_DURABLE_CONFIG` or `--config`):
 | `FLE_DURABLE_TOKEN` | – | API token, at least 32 characters (required) |
 | `FLE_DURABLE_MODEL_URL` | `http://127.0.0.1:8080/v1` | OpenAI-compatible server |
 | `FLE_DURABLE_MODEL` | `local` | model id |
-| `FLE_DURABLE_CONTEXT` | `32768` | context window; compaction follows it |
+| `FLE_DURABLE_MODEL_KEY` | – | API key of the model server, if it wants one |
 | `FLE_DURABLE_HOME` | `~/.fle-durable` | SQLite file and work folder |
 | `FLE_DURABLE_WORKSPACE` | `<home>/work` | the agent's working folder |
 | `FLE_DURABLE_HOST` / `FLE_DURABLE_PORT` | `127.0.0.1` / `8740` | loopback only unless `"allowNetwork": true` |
-| `FLE_DURABLE_HUB_URL` | – | an MCP hub (the FYOS hub): the agent gets `hub_search` and `hub_call` for all its tools |
-| `FLE_DURABLE_HUB_HEADERS` | – | JSON object of headers for the hub (its token, `X-GitHub-Token`); never shown to the model |
+| `FLE_DURABLE_EVENTS` | on | `0`: only your messages, no agenda, webhooks or other sources |
+| `FLE_DURABLE_BROWSER` | on | `0`: no browser tool |
+| `FLE_DURABLE_DESKTOP`, `…_URL`, `…_TOKEN`, `…_TARGET` | off | computer use through a desktop service; FLE Link sets these and keeps the service locked until you allow it |
 
-**Many tools, a small prompt.** With a hub the agent does not get one description per tool: `hub_search` finds a tool
-by what it should do (GitHub repos, files and pull requests, web pages as Markdown, knowledge, …) and `hub_call` calls it.
-FLE Link sets both variables from its Settings (MCP hub, GitHub sign-in).
+The JSON file sets `model.contextWindow` and `model.maxTokens` (the context window of your model server and the longest
+answer; FLE Link writes both from the loaded model), and can set `agent` (its name), `instructions` (added to its prompt),
+`agenda.zone` and `ports.sources`.
 
-The JSON file can also set `agent` (its name), `instructions` (added to its prompt), `agenda.zone`, `ports.sources`.
+**Many tools, a small prompt.** With `FLE_DURABLE_HUB_URL` (the address of an FYOS MCP hub) and
+`FLE_DURABLE_HUB_HEADERS` (a JSON object of headers: its token, `X-GitHub-Token`; never shown to the model) the agent
+does not get one description per tool: it searches the hub for a tool by what it should do and calls it. FLE Link sets
+both from its Settings (MCP hub, GitHub sign-in).
 
 ## As a library
 
