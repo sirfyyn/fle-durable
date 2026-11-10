@@ -17,6 +17,10 @@ import { PLAETZE, unteragentWerkzeuge } from '../src/unteragent.js';
 
 const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'unteragent-')));
 after(() => rmSync(tmp, { recursive: true, force: true }));
+// Das Werkzeug wartet mit einem unref-Timer (im Betrieb hält der Server die Schleife wach). Ohne diesen Griff leert Node 22 die
+// Ereignisschleife mitten im Test und bricht die übrigen Tests ab; Node 26 nicht (10.11.2026, Hauptserver, Node 22.23).
+const wach = setInterval(() => {}, 1000);
+after(() => clearInterval(wach));
 
 const hub = () => ({
   aufrufen: async () => ({ ok: true, result: {} }),
