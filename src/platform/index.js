@@ -3,6 +3,7 @@
  * Linked systems attach through bridges (docs/current/RUNNER-EIGENSTAENDIG.md). Everything lives in one SQLite file (store.js).
  */
 import { ownerName } from '../ports/contracts.js';
+import { CalendarBridges } from './bridges.js';
 import { Bus } from './bus.js';
 import { Calendar } from './calendar.js';
 import { PlatformStore, platformFile } from './store.js';
@@ -26,6 +27,7 @@ export function createPlatform(cfg, { now = () => Date.now() } = {}) {
     bus,
     tickets,
     calendar,
+    bridges: new CalendarBridges({ calendar, store, bus, now }),
     state: () => ({ file: store.file, bus: bus.state(), tickets: tickets.board().columns, waiting: tickets.waiting().anzahl }),
     close: () => store.close(),
   };

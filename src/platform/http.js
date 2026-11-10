@@ -186,6 +186,11 @@ async function routeCalendar({ req, res, url, teile, methode, pfad, platform, ac
     }
     throw new TicketError(405, 'GET or POST');
   }
+  if (a === 'sync' && methode === 'POST') {
+    const b = await readJson(req);
+    json(res, 200, { ok: true, ...platform.bridges.sync(String(b.source ?? ''), b) });
+    return;
+  }
   if (a === 'busy' && methode === 'GET') {
     json(res, 200, { ok: true, ...calendar.busy(url.searchParams.get('target'), url.searchParams.get('at') ?? undefined) });
     return;
