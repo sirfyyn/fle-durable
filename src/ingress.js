@@ -31,7 +31,7 @@ export function eingabeInhalt(e, zusatz) {
 }
 
 export class Ingress {
-  constructor({ cfg, runner, hub, spielmodus, tor, onFehler, ruhe, jetzt } = {}) {
+  constructor({ cfg, runner, hub, spielmodus, tor, modellTor, onFehler, ruhe, jetzt } = {}) {
     this.cfg = cfg;
     /** Ruhe-Schalter (`ruhe.js`); ohne Angabe die des Runners. Standard lässt Besitzer durch, `tief` hält alles an. */
     this.ruhe = ruhe === undefined ? (runner?.ruhe ?? null) : ruhe;
@@ -41,6 +41,9 @@ export class Ingress {
     this.hub = hub;
     this.spielmodus = spielmodus ?? null;
     this.tor = tor ?? null;
+    /** Modell-Tor (`modelltor.js`, nur FLE Durable): antwortet der Modellserver nicht, wartet alles außer Freigabe-Entscheidungen. */
+    this.modellTor = modellTor ?? null;
+    this._gemeldetModell = false;
     this.onFehler = onFehler ?? ((e) => console.error(`[fyos-ingress] ${e.message}`));
     this.aktiv = false;
     this.cursor = '$';
@@ -308,6 +311,26 @@ export class Ingress {
         } else {
           this._gemeldetSpiel = false;
           const wartend = await this.harness.snapshot(Wartend, CTX);
+          // Modell-Tor: gefragt wird nur, wenn etwas wartet. Ist es zu, bleibt alles in `Wartend` (auch Besitzer' Nachrichten:
+          // sie bekämen sonst drei Fehlversuche und wären verbraucht); Freigabe-Entscheidungen gehen nie an den Agenten.
+          if (this.modellTor && (wartend?.eintraege ?? []).length && !(await this.modellTor.offen())) {
+            const freigabe = wartend.eintraege.find((x) => Ingress.istFreigabeEntscheidung(x));
+            if (freigabe) {
+              await this.#ausgeben(freigabe);
+              continue;
+            }
+            if (!this._gemeldetModell) {
+              this._gemeldetModell = true;
+              // englisch: das Tor gibt es nur in FLE Durable, und dessen Log liest man in FLE Link
+              console.log(`[fle-durable] the model does not answer (${this.modellTor.stand?.grund || 'unknown'}): events wait in the queue`);
+            }
+            await this.#warten(5000, true);
+            continue;
+          }
+          if (this._gemeldetModell) {
+            this._gemeldetModell = false;
+            console.log('[fle-durable] the model answers again: events go on');
+          }
           const naechster = this.naechster(wartend);
           if (naechster) {
             await this.#ausgeben(naechster);

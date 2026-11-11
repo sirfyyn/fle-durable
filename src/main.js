@@ -22,6 +22,8 @@ for (const [from, to] of Object.entries(NAMES)) {
   delete process.env[from];
 }
 process.env.FYOS_RUNNER_LOKAL = '1';
+// the model's name as the README says it (the runner's own default is the name of its house model)
+process.env.FYOS_MODELL_NAME ??= 'local';
 process.env.FYOS_BROWSER_ENABLED ??= '1';
 if (process.env.FLE_DURABLE_HOME) {
   process.env.FYOS_RUNNER_STORAGE ??= `${process.env.FLE_DURABLE_HOME}/durable.sqlite`;

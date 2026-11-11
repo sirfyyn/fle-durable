@@ -104,6 +104,9 @@ curl -s -X POST -H "Authorization: Bearer $FLE_DURABLE_TOKEN" http://127.0.0.1:8
   agent marked as data.
 - **Approvals only where it matters.** Deleting your home folder, `git reset --hard`, formatting a disk and the like are
   stopped until you approve exactly that command (`request_approval`). Everything else the agent simply does.
+- **Waits for the model.** While the model server does not answer (FLE Link without a loaded model, a server that is
+  down), events stay in the queue and go on when it answers again; a chat message is refused with a clear error instead
+  of being used up. `"modellWarten": false` in the config's `pi_durable` section turns that off.
 - **Survives restarts.** Conversations, the queue, the agenda and approvals live in one SQLite file. Open turns resume
   from their last checkpoint.
 
@@ -135,13 +138,13 @@ Every call needs `Authorization: Bearer <token>` (or the page's cookie after a o
 
 | Route | What |
 |---|---|
-| `GET /api/health` | model, storage, queue, sources |
+| `GET /api/health` | `model` (name, url, whether it answers), `storage`, `queue` (waiting, paused), `sources`, `device`, `conversations` |
 | `POST /api/message` `{text, id?}` | you write (right of way) |
 | `GET /api/conversation` · `GET /api/stream` | the conversation, and its events as server-sent events |
 | `POST /api/abort` | stop the running turn |
 | `GET` · `POST /api/agenda` · `DELETE /api/agenda/<id>` · `POST /api/agenda/<id>/pause` | the agenda |
 | `POST /api/events` `{text, id?, from?, ref?}` | webhook into the queue |
-| `GET /api/queue` · `POST /api/queue/pause` | what waits; pause and resume |
+| `GET /api/queue` · `POST /api/queue/pause` | what waits (`entries`), whether the model answers (`model`); pause and resume |
 | `GET /api/approvals` · `POST /api/approvals/<id>` `{decision: granted\|refused, note?}` | approvals |
 | `POST /api/session/code` | a one-time sign-in code for the page |
 
@@ -175,6 +178,11 @@ answer; FLE Link writes both from the loaded model), and can set `agent` (its na
 `FLE_DURABLE_HUB_HEADERS` (a JSON object of headers: its token, `X-GitHub-Token`; never shown to the model) the agent
 does not get one description per tool: it searches the hub for a tool by what it should do and calls it. FLE Link sets
 both from its Settings (MCP hub, GitHub sign-in).
+
+**A note on names.** FLE Durable is the runner of FYOS, taken out and made to stand alone. The routes and fields in the
+tables above are the English contract. Next to them the answers still carry the runner's own German field names
+(`eintraege`, `geraet`, `gespraeche`, …), most of its source and its other log lines are German, and an error comes back
+as `{"ok": false, "fehler": "…"}` (the text itself is English).
 
 ## As a library
 

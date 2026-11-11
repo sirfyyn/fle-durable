@@ -53,6 +53,7 @@ const FEHLER_EXAKT = new Map([
   ['Nicht erlaubt', 'Not allowed'],
   ['Fehler', 'Error'],
   ['Ungültiges JSON', 'Invalid JSON'],
+  ['Das Modell antwortet nicht; die Nachricht wurde nicht angenommen', 'The model does not answer; the message was not taken'],
   ['Sprachkanal nicht eingerichtet', 'Voice channel not set up'],
   ['Methode nicht erlaubt', 'Method not allowed'],
   ['Verwaltung nicht eingerichtet', 'Administration not set up'],

@@ -7,6 +7,8 @@
  */
 export const FLE_LINK_CALLER = 'fle-link';
 
+import { isOwnerClass } from './ports/contracts.js';
+
 const OWN_ROUTES = new Set(['/api/message', '/api/conversation', '/api/stream', '/api/abort', '/api/approvals']);
 const ALLOWED = new Set([
   'GET /api/health',
@@ -23,11 +25,43 @@ const ALLOWED = new Set([
 export const isFleLinkRoute = (path) => OWN_ROUTES.has(path) || path.startsWith('/api/approvals/');
 export const fleLinkMay = (method, path) => ALLOWED.has(`${method} ${path}`);
 
+/**
+ * The queue in the shape FLE Link expects (its Agent page reads `entries`, `source`, `priority`, `accepted`): since the
+ * full runner became FLE Durable (0.2.0) the page got the runner's own field names and showed nothing waiting.
+ * `model`: the model gate's last answer ({open, reason}), null without a gate.
+ */
+export const queueView = (eintraege, { modell = null } = {}) => ({
+  entries: (eintraege ?? []).map((e) => ({
+    id: e.id,
+    source: e.quelle,
+    from: e.von,
+    priority: isOwnerClass(e.klasse) ? 'owner' : 'background',
+    ref: e.bezug ?? null,
+    accepted: e.angenommen,
+    text: e.text,
+  })),
+  model: modell ? { open: modell.offen, reason: modell.grund } : null,
+});
+
+/**
+ * `GET /api/health` in English, next to the runner's own fields (FLE Durable only: its README names model, storage,
+ * queue and sources, and someone who reads the API should not need German for that).
+ */
+export const healthView = (h, { cfg, waiting = 0, paused = false, sources = [], model = null } = {}) => ({
+  device: h?.geraet ?? null,
+  conversations: h?.gespraeche ?? 0,
+  storage: h?.speicher ?? null,
+  model: { name: cfg?.pi_durable?.model?.default ?? null, url: cfg?.pi_durable?.model?.baseUrl ?? null, answers: model ? model.offen : null },
+  queue: { waiting, paused },
+  sources,
+  time: h?.zeit ?? null,
+});
+
 /** Open approvals in the shape FLE Link expects. */
 export const approvalsView = (approvals) =>
   (approvals ?? []).filter((a) => a.status === 'offen').map((a) => ({ id: a.id, status: 'open', action: a.aktion, context: a.kontext, command: a.befehl ?? null }));
 
-export async function routeFleLink({ req, res, path, method, runner, readJson, json, stream, error }) {
+export async function routeFleLink({ req, res, path, method, runner, readJson, json, stream, error, modellTor = null }) {
   if (path.startsWith('/api/approvals/') && method === 'POST') {
     const body = await readJson(req);
     const entscheidung = body.decision === 'granted' ? 'erteilt' : 'abgelehnt';
@@ -42,6 +76,8 @@ export async function routeFleLink({ req, res, path, method, runner, readJson, j
     const body = await readJson(req);
     const text = String(body.text ?? '').trim();
     if (!text) throw error(400, 'text fehlt');
+    // Ohne Modell bekäme die Nachricht drei Fehlversuche und wäre verbraucht: lieber gleich sagen, dass keines antwortet.
+    if (modellTor && !(await modellTor.offen())) throw error(503, 'Das Modell antwortet nicht; die Nachricht wurde nicht angenommen');
     const sent = await runner.sende(rootId, text, { art: 'folgen', requestId: body.requestId });
     json(res, 200, { ok: true, ...sent });
     return;

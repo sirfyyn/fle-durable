@@ -20,7 +20,7 @@ import { SucheFehler } from './suche.js';
 import { VerwaltungsFehler } from './verwaltung.js';
 import { fehlerText, sprache as aktuelleSprache } from './i18n.js';
 import { isPlatformPath, routePlatform } from './platform/http.js';
-import { FLE_LINK_CALLER, fleLinkMay, isFleLinkRoute, routeFleLink } from './fle-link.js';
+import { FLE_LINK_CALLER, fleLinkMay, healthView, isFleLinkRoute, queueView, routeFleLink } from './fle-link.js';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -239,7 +239,8 @@ export function erstelleServer({ runner, cfg, verwaltung = null, sprache = null,
       await statisch(req, res, pfad, clientDir);
     } catch (fehler) {
       const status = fehler instanceof HttpFehler || fehler instanceof VerwaltungsFehler ? fehler.status : 500;
-      if (status >= 500) console.error(`[fyos-runner] ${req.method} ${pfad}:`, fehler);
+      // Eine bewusst gemeldete 5xx (HttpFehler: „startet noch“, „Modell antwortet nicht“) ist eine Zeile wert, keinen Stapel.
+      if (status >= 500) console.error(`[fyos-runner] ${req.method} ${pfad}:`, fehler instanceof HttpFehler ? fehler.message : fehler);
       if (!res.headersSent) json(res, status, { ok: false, fehler: fehler.message || 'Fehler' });
       else res.end();
     }
@@ -398,7 +399,10 @@ async function routeEreignisse({ req, res, pfad, methode, runner, grenze, ingres
     const eintraege = (w.eintraege ?? []).map((e) => ({
       id: e.stromId, quelle: e.quelle, von: e.von, klasse: e.klasse, bezug: e.bezug ?? null, angenommen: e.angenommen, text: String(e.text ?? '').slice(0, 280),
     }));
-    json(res, 200, { ok: true, eintraege, pausiert: Boolean(ingress?.haelt), an: Boolean(ingress?.konfiguriert) });
+    // `modell`: letzter Stand des Modell-Tors ({offen, grund}) oder null (kein Tor oder noch nie gefragt)
+    const modell = ingress?.modellTor?.stand ?? null;
+    // dazu dieselbe Liste in den Feldnamen, die FLE Link liest (`entries`, `model`); Ginnys App liest die deutschen
+    json(res, 200, { ok: true, eintraege, pausiert: Boolean(ingress?.haelt), an: Boolean(ingress?.konfiguriert), modell, ...queueView(eintraege, { modell }) });
     return;
   }
   const agenda = runner.agenda;
@@ -490,6 +494,7 @@ async function routeApi({ req, res, url, pfad, runner, cfg, grenze, wer, verwalt
       json,
       stream: (r, lauf, id) => stromGespräch(r, lauf, id, { ereignisName: 'events' }),
       error: (status, text) => new HttpFehler(status, text),
+      modellTor: ingress?.modellTor ?? null,
     });
     return;
   }
@@ -506,7 +511,20 @@ async function routeApi({ req, res, url, pfad, runner, cfg, grenze, wer, verwalt
   }
 
   if (methode === 'GET' && pfad === '/api/health') {
-    json(res, 200, { ok: true, ...(await runner.health()), konfiguration: oeffentlicheSicht(cfg) });
+    const h = await runner.health();
+    // FLE Durable (lokaler Modus): dieselben Angaben zusätzlich in englischen Feldnamen
+    let englisch = {};
+    if (cfg.pi_durable.lokal === true) {
+      const w = (await runner.harness.snapshot(Wartend, KONTEXT)) ?? { eintraege: [] };
+      englisch = healthView(h, {
+        cfg,
+        waiting: (w.eintraege ?? []).length,
+        paused: Boolean(ingress?.haelt),
+        sources: ingress?.quellenNamen ?? [],
+        model: ingress?.modellTor?.stand ?? null,
+      });
+    }
+    json(res, 200, { ok: true, ...h, ...englisch, konfiguration: oeffentlicheSicht(cfg) });
     return;
   }
 

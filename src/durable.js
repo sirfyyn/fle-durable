@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { bindungPruefen, konfigurationLaden, oeffentlicheSicht } from './config.js';
 import { spracheSetzen } from './i18n.js';
 import { Ingress } from './ingress.js';
+import { ModellTor } from './modelltor.js';
 import { Runner } from './runner.js';
 import { erstelleServer } from './server.js';
 import { loadPort } from './ports/load.js';
@@ -47,7 +48,9 @@ export async function main() {
 
   const runner = new Runner(cfg);
   await runner.start();
-  const ingress = new Ingress({ cfg, runner, hub: null, spielmodus: runner.spielmodusEinlass, tor: null, ruhe: runner.ruhe });
+  // Das Modell lädt und entlädt der Mensch: Ereignisse warten, solange der Modellserver nicht antwortet (`modellWarten: false` schaltet es ab).
+  const modellTor = pd.modellWarten === false ? null : new ModellTor({ baseUrl: pd.model.baseUrl, apiKey: pd.model.apiKey });
+  const ingress = new Ingress({ cfg, runner, hub: null, spielmodus: runner.spielmodusEinlass, tor: null, modellTor, ruhe: runner.ruhe });
   const einreihen = (e) => ingress.einreihen(e);
   const quellen = await loadPort('sources', {
     cfg,
@@ -59,6 +62,7 @@ export async function main() {
     for (const q of quellen) await q.variant.onTurn?.(e);
   };
   await ingress.start();
+  ingress.quellenNamen = quellen.map((q) => q.name);
   if (ingress.konfiguriert) for (const q of quellen) q.variant.start();
 
   const server = erstelleServer({ runner, cfg, ingress });
