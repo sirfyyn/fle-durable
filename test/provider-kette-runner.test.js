@@ -141,6 +141,24 @@ for (const [fall, fehlertext] of [
   });
 }
 
+test('sende mit Klasse ohne eingerichtete Bahn: die Kette wählt wie bisher (Spielmodus → Ersatzdenker)', async () => {
+  const { cfg, marke } = baue('ohne-bahn', { bahnen: { max: null } });
+  writeFileSync(marke, '');
+  const { runner, root, aufrufe, modell } = await start(cfg, {
+    hausmodell: () => ({ text: 'hausmodell-ok' }),
+    ersatzdenker: () => ({ text: 'ersatz-ok' }),
+  });
+  try {
+    assert.equal(cfg.bahnen.max, null);
+    await runner.sende(root.id, 'Hallo', { klasse: 'max' });
+    await bis(async () => antworten(await runner.ansicht(root.id)).includes('ersatz-ok'), { was: 'Antwort vom Ersatz' });
+    assert.deepEqual(aufrufe.map((a) => a.provider), ['ersatzdenker'], 'Hausmodell steht im Spielmodus und wird nicht gefragt');
+    assert.equal((await modell()).provider, 'ersatzdenker');
+  } finally {
+    await runner.close().catch(() => {});
+  }
+});
+
 test('kein Rückfall bei normalem Erfolg und bei einem anderen Fehler', async () => {
   const { cfg } = baue('erfolg');
   const { runner, root, aufrufe, modell } = await start(cfg, {

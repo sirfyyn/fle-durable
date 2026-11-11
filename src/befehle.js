@@ -17,7 +17,7 @@ import { basename, delimiter, join, resolve, sep } from 'node:path';
 import { KONTEXT, agentVon, eintragSchreiben, gespraechOeffnen, neuesteEintraege } from './lauf/index.js';
 import { parse as yamlParse } from 'yaml';
 import { AgentMeta, LaufListe, Register } from './documents.js';
-import { modellListe } from './models.js';
+import { fensterFuerModell, modellListe } from './models.js';
 
 const CTX = KONTEXT;
 const ERGEBNIS_MAX = 8000;
@@ -561,7 +561,7 @@ export class Befehle {
       summe.kosten += Number(w.cost?.total ?? 0);
     }
     const zeichen = JSON.stringify(a.entries.flatMap((e) => e.model ?? [])).length;
-    const fenster = modellListe(this.cfg).length ? 262144 : null;
+    const fenster = modellListe(this.cfg).length ? fensterFuerModell(this.cfg, g.agent?.model) : null;
     const zahl = (n) => n.toLocaleString('de-DE');
     const text = [
       `**${g.meta?.titel ?? 'Gespräch'}** (Nr. ${c.id}${c.root ? ', Hauptgespräch' : ''})`,

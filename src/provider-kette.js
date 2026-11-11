@@ -70,6 +70,23 @@ export function verdichtungFuer(p) {
   return { enabled: true, reserveTokens: reserve, keepRecentTokens: behalten, backgroundTokens: hintergrund };
 }
 
+/**
+ * Verdichtungsgrenzen des Hauptmodells (ohne Kette): Die Hintergrund-Verdichtung beginnt unabhängig vom Fenster bei
+ * ≈ 120k (Entscheidung 590), die harte Grenze folgt dem Fenster (Fenster − Reserve). Bei 262144 genau die bisherigen
+ * Werte (24k / 32k / 118k); bei 163840 (Katy mit f16-KV-Cache, Entscheidung 1023) Hintergrund ab ≈ 120k, hart ab ≈ 140k.
+ * Für kleine Fenster bleibt zwischen Hintergrund und harter Grenze mindestens ein Zehntel des Fensters.
+ * `eigen` (`pi_durable.verdichtung`: reserve, behalten, hintergrund) überschreibt einzelne Werte.
+ */
+export function verdichtungHaupt(fenster, eigen = {}) {
+  const f = Number(fenster) > 0 ? Number(fenster) : VERDICHTUNG_BASIS.fenster;
+  const wert = (v, vorgabe) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.round(Number(v)) : vorgabe);
+  const ab = VERDICHTUNG_BASIS.fenster - VERDICHTUNG_BASIS.reserveTokens - VERDICHTUNG_BASIS.backgroundTokens;
+  const reserve = wert(eigen?.reserve, Math.min(VERDICHTUNG_BASIS.reserveTokens, Math.round(f * 0.25)));
+  const behalten = wert(eigen?.behalten, Math.min(VERDICHTUNG_BASIS.keepRecentTokens, Math.round(f * 0.2)));
+  const hintergrund = wert(eigen?.hintergrund, Math.max(Math.round(f * 0.1), f - reserve - ab));
+  return { reserve, behalten, hintergrund };
+}
+
 /** Die Schwelle, ab der verdichtet werden muss (blockierend): Fenster minus Reserve. */
 export function blockierendAb(p) {
   return p.contextWindow - verdichtungFuer(p).reserveTokens;

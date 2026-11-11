@@ -96,7 +96,7 @@ export function normaliseItem(input, { now, zone, by }) {
 }
 
 const view = (id, it) => ({ id, ...it });
-export const newAgendaId = (now) => `a${now.toString(36)}${randomBytes(2).toString('hex')}`;
+export const newAgendaId = (now) => `a${now.toString(36)}${randomBytes(4).toString('hex')}`;
 
 /** The agenda of one runner: storage, due check, and what the tools, the API and the source call. */
 export class AgendaStore {
@@ -141,9 +141,12 @@ export class AgendaStore {
     if (by !== 'owner' && by !== 'agent') throw new Error('by must be owner or agent');
     const now = this.now();
     const item = normaliseItem(input, { now, zone: this.zone, by });
-    id = id ?? newAgendaId(now);
+    const replayed = id != null;
     return this.#change((d) => {
-      if (d.items[id]) return { ...view(id, d.items[id]), existed: true };
+      // Only a given id (a replayed tool call) may meet an existing item; a fresh id that collides is drawn again,
+      // otherwise two items planned in the same millisecond could become one.
+      if (replayed && d.items[id]) return { ...view(id, d.items[id]), existed: true };
+      if (!replayed) do { id = newAgendaId(now); } while (d.items[id]);
       const all = Object.values(d.items);
       if (all.length >= AGENDA_LIMITS.items) throw new Error(`the agenda is full (${AGENDA_LIMITS.items} items)`);
       if (by === 'agent' && all.filter((x) => x.by === 'agent').length >= AGENDA_LIMITS.byAgent) {

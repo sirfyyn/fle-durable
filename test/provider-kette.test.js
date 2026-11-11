@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createAssistantMessageEventStream, fauxAssistantMessage } from '@earendil-works/pi-ai';
 import { konfigurationLaden } from '../src/config.js';
-import { kettenHuelle, modellListe, rheaModelle } from '../src/models.js';
+import { fensterFuerModell, kettenHuelle, modellListe, rheaModelle } from '../src/models.js';
 import {
   KEIN_PROVIDER,
   ProviderKette,
@@ -11,6 +11,7 @@ import {
   fehlerArt,
   schaetzeTokens,
   verdichtungFuer,
+  verdichtungHaupt,
   verdichtungsUeberschreibungen,
 } from '../src/provider-kette.js';
 
@@ -82,6 +83,21 @@ test('Verdichtung je Provider: Hausmodell wie bisher, Ersatzdenker proportional 
   const ue = verdichtungsUeberschreibungen(cfg);
   assert.equal(ue['hausmodell/hausmodell-max'].backgroundTokens, 118000);
   assert.equal(ue['ersatzdenker/ersatzdenker'].backgroundTokens, 29500);
+});
+
+test('Verdichtung des Hauptmodells folgt dem Fenster: 262144 wie bisher, 163840 hart ab ≈ 140k (Entscheidung 1023)', () => {
+  assert.deepEqual(verdichtungHaupt(262144), { reserve: 24000, behalten: 32000, hintergrund: 118000 });
+  const cfg = laden({ provider: { hausmodell: { contextWindow: 163840 } } });
+  assert.equal(fensterFuerModell(cfg, null), 163840);
+  assert.equal(rheaModelle(cfg).getModel('hausmodell', 'hausmodell').contextWindow, 163840);
+  const v = verdichtungHaupt(163840, cfg.pi_durable.verdichtung);
+  assert.deepEqual(v, { reserve: 24000, behalten: 32000, hintergrund: 19696 });
+  assert.equal(163840 - v.reserve - v.hintergrund, 120144); // Hintergrund weiter ab ≈ 120k (Entscheidung 590)
+  assert.equal(163840 - v.reserve, 139840); // harte Grenze
+  const klein = verdichtungHaupt(65536);
+  assert.ok(klein.hintergrund >= 6554 && 65536 - klein.reserve - klein.hintergrund > 0);
+  const eigen = laden({ provider: { hausmodell: { contextWindow: 163840 } }, verdichtung: { hintergrund: 30000 } });
+  assert.equal(verdichtungHaupt(163840, eigen.pi_durable.verdichtung).hintergrund, 30000);
 });
 
 test('fehlerArt ordnet Verbindung, Zeit und 5xx ein, anderes nicht', () => {

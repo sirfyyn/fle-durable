@@ -694,7 +694,9 @@ async function routeApi({ req, res, url, pfad, runner, cfg, grenze, wer, verwalt
         }
         return;
       }
-      const r = await runner.sende(id, body.text, { art: body.art, requestId: body.requestId });
+      // Vorfahrt nur für Besitzer' eigenes Token (App) bzw. ohne Token; benannte Tokens anderer Rufer laufen im Hintergrund.
+      const klasse = wer === 'app' || wer === 'lokal' ? 'max' : 'hintergrund';
+      const r = await runner.sende(id, body.text, { art: body.art, requestId: body.requestId, klasse });
       json(res, 200, { ok: true, ...r });
       return;
     }

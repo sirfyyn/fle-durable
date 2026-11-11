@@ -125,6 +125,28 @@ test('Runner startet, Hauptgespräch besteht, Antwort kommt an', async () => {
   }
 });
 
+test('sende mit Klasse max stellt die Besitzer-Bahn ein, Hintergrund wieder die Standardbahn (Nr. 971)', async () => {
+  const { cfg, faux, models } = baue('bahn');
+  faux.setResponses([fauxAssistantMessage('eins'), fauxAssistantMessage('zwei'), fauxAssistantMessage('drei')]);
+  const runner = new Runner(cfg, { models, hub: fakeHub([]) });
+  await runner.start();
+  try {
+    const root = (await runner.gespraeche()).find((g) => g.art === 'root');
+    const modell = async () => (await runner.gespraech(root.id)).agent.model?.modelId;
+    assert.equal(await modell(), 'hausmodell');
+    await runner.sende(root.id, 'Hallo', { klasse: 'max' });
+    assert.equal(await modell(), 'hausmodell-max');
+    await bis(async () => assistentenTexte(await runner.ansicht(root.id)).includes('eins'), { was: 'erste Antwort' });
+    await runner.sende(root.id, 'Weiter');
+    assert.equal(await modell(), 'hausmodell-max', 'ohne Klasse bleibt die Bahn');
+    await bis(async () => assistentenTexte(await runner.ansicht(root.id)).includes('zwei'), { was: 'zweite Antwort' });
+    await runner.sende(root.id, 'Hintergrund', { klasse: 'hintergrund' });
+    assert.equal(await modell(), 'hausmodell');
+  } finally {
+    await runner.close().catch(() => {});
+  }
+});
+
 test('Spielmodus hält Eingänge zurück, danach Besitzer zuerst, nichts geht verloren', async () => {
   const { cfg, faux, models } = baue('spiel');
   const gesehen = mitProtokoll(faux, 4);

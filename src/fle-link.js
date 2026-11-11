@@ -78,7 +78,7 @@ export async function routeFleLink({ req, res, path, method, runner, readJson, j
     if (!text) throw error(400, 'text fehlt');
     // Ohne Modell bekäme die Nachricht drei Fehlversuche und wäre verbraucht: lieber gleich sagen, dass keines antwortet.
     if (modellTor && !(await modellTor.offen())) throw error(503, 'Das Modell antwortet nicht; die Nachricht wurde nicht angenommen');
-    const sent = await runner.sende(rootId, text, { art: 'folgen', requestId: body.requestId });
+    const sent = await runner.sende(rootId, text, { art: 'folgen', requestId: body.requestId, klasse: 'max' });
     json(res, 200, { ok: true, ...sent });
     return;
   }

@@ -1,6 +1,6 @@
 {
   "name": "fle-durable",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "FLE Durable: an always-on, event-driven local agent on pi-durable. Events in, one durable queue, one agent; survives restarts without running anything twice.",
   "license": "Apache-2.0",
   "type": "module",

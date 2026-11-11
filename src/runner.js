@@ -57,6 +57,7 @@ import {
   KEIN_PROVIDER,
   ProviderKette,
   blockierendAb,
+  verdichtungHaupt,
   providerFuerModell,
   schaetzeTokens,
   verdichtungsUeberschreibungen,
@@ -220,11 +221,11 @@ export class Runner {
       werkzeugAusfuehrung: 'parallel',
       // Hintergrund-Verdichtung ab contextWindow − reserve − background ≈ 120k (Besitzer 25.10.2026, Entscheidung 590):
       // über 60k fällt Katys Decode auf ≈ 54 tok/s, und ein Neuaufbau bei 190k kostet ≈ 5 min. Harte Grenze bleibt ≈ 238k.
+      // Das Fenster kommt aus `pi_durable.provider.hausmodell.contextWindow`; seit 11.11.2026 (Entscheidung 1023) folgen die
+      // Grenzen ihm: bei 163840 (f16-KV-Cache) Hintergrund weiter ab ≈ 120k, hart ab ≈ 140k.
       verdichtung: {
         an: true,
-        reserve: 24_000,
-        behalten: 32_000,
-        hintergrund: 118_000,
+        ...verdichtungHaupt(fensterFuerModell(this.cfg, null), this.pd.verdichtung),
         // Mit Kette: Grenzen je Provider aus dessen Fenster (Ersatzdenker 65536 → Hintergrund ab ≈ 30k, blockierend ab ≈ 59k).
         // Lokaler Modus: das Fenster des Nutzer-Modells ist meist viel kleiner als Rheas; die Grenzen folgen ihm.
         jeModell: this.kette.aktiv || this.pd.lokal === true ? verdichtungsUeberschreibungen(this.cfg) : undefined,
@@ -400,25 +401,27 @@ export class Runner {
   /**
    * Bahnen (ADR-209): Besitzer' Klasse läuft auf dem Besitzer-Modell, Hintergrund auf dem Standardmodell.
    * Gesprächsmodelle, die ein Mensch bewusst gewählt hat (`meta.modell`), bleiben unberührt.
+   * Gibt `true` zurück, wenn die Bahn das Modell bestimmt hat (auch wenn es schon stimmte), sonst `false`.
    */
   async bahnEinstellen(id, klasse) {
     const bahn = this.cfg.bahnen?.[klasse === 'max' ? 'max' : 'hintergrund'];
-    if (!bahn?.provider || !bahn?.modelId) return;
+    if (!bahn?.provider || !bahn?.modelId) return false;
     const meta = await this.harness.snapshot(AgentMeta, id, CTX).catch(() => null);
-    if (meta?.modell) return;
+    if (meta?.modell) return false;
     const conv = await gespraechOeffnen(this.harness, id);
-    if (!conv) return;
+    if (!conv) return false;
     const agent = await agentVon(conv);
     // Kette: der erste brauchbare Provider; die Bahn gilt, solange es ihr eigener Provider ist.
     if (this.kette.aktiv && this.kette.provider(bahn.provider)) {
       const ziel = await this.kette.waehlen(); // wirft KEIN_PROVIDER, wenn keiner erreichbar ist
       if (ziel.name !== bahn.provider) {
         await this.#wechseln(conv, agent, ziel, klasse === 'max' ? 'max' : 'standard', { geplant: true });
-        return;
+        return true;
       }
     }
-    if (agent.model?.provider === bahn.provider && agent.model?.modelId === bahn.modelId) return;
+    if (agent.model?.provider === bahn.provider && agent.model?.modelId === bahn.modelId) return true;
     await umstellen(conv, { model: { provider: bahn.provider, modelId: bahn.modelId } });
+    return true;
   }
 
   /**
@@ -683,8 +686,9 @@ export class Runner {
   /**
    * `kanal` (z. B. `sprache`) steht im Eintrag; `kopf` ist ein Zusatz-Abschnitt, der nur dem Modell vorangestellt wird
    * (Sprachprofil), nicht im Eintrag steht und im Verlauf der Clients nicht erscheint.
+   * `klasse` ('max' | 'hintergrund') stellt vor dem Zug die Bahn ein (ADR-209); ohne sie bleibt das Modell, wie es ist.
    */
-  async sende(id, text, { art = 'folgen', requestId, kanal = null, kopf = null } = {}) {
+  async sende(id, text, { art = 'folgen', requestId, kanal = null, kopf = null, klasse = null } = {}) {
     const conv = await gespraechOeffnen(this.harness, id);
     if (!conv) throw new Error('Gespräch nicht gefunden');
     let inhalt = TEXT(text, 40_000).trim();
@@ -702,7 +706,8 @@ export class Runner {
         inhalt = TEXT(b.text, 40_000);
       }
     }
-    await this.#providerWaehlen(conv, id);
+    // Besitzer' Züge aus App und FLE Link laufen auf der Besitzer-Bahn, sonst gibt ihnen das Tor keine Vorfahrt (Nr. 971).
+    if (!(klasse && (await this.bahnEinstellen(id, klasse)))) await this.#providerWaehlen(conv, id);
     const submission = await zugStarten(conv, {
       text: kopf ? `${TEXT(kopf, 4000)}\n\n${inhalt}` : inhalt,
       wennBeschaeftigt: art === 'steuern' ? 'steuern' : art === 'abweisen' ? 'abweisen' : 'folgen',
